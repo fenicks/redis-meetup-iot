@@ -103,12 +103,14 @@
 #define REDISPORT 6379
 
 #include <ESP8266WiFi.h>
+#include "RedisCommand.h"
 #include "tools.h"
 
 WiFiClient redisConnection;
 IPAddress redisIP;
 unsigned long lastSensorRead=0;
-
+RedisCommand_t redisCommand;
+char* szRESP;
 
 /********/
 /* Main */
@@ -148,6 +150,13 @@ void setup() {
 
 void loop() {
   STATS_LOOP
+  if ((millis() - lastSensorRead)>5000) {
+    PROF_START(SensorRead);
+    Serial.print("Sensor value (0-1024) : ");
+    Serial.println(analogRead(0));
+    PROF_STOP(SensorRead);
+    lastSensorRead = millis();
+  }
 
   if (!redisConnection.connected()) {
     DEBUG_PRINT("Opening connection to ");
@@ -166,64 +175,31 @@ void loop() {
     }
   }
 
-  // Send hardcoded PING in RESP
-  redisConnection.write("*1\r\n$4\r\nPING\r\n");
+  // Add you sensor value to the begining of the device's value list
+  rediscommand_init(redisCommand);
+  rediscommand_add(redisCommand,"LPUSH");
+  rediscommand_add(redisCommand,(String("v:")+WiFi.macAddress()).c_str());
+  rediscommand_add(redisCommand,analogRead(0));
+  szRESP=rediscommand_tochar(redisCommand);
+  redisConnection.print(szRESP);
+  free(szRESP);
   // Expect a reply and busy (bad) wait for it
   while(redisConnection.available()==0);
   // Output to the console all the received bytes as chars
   while(redisConnection.available()!=0)
     Serial.print((char)redisConnection.read());
 
-  // Send hardcoded DEL in RESP
-  Serial.println((String("DEL test::")+WiFi.macAddress()).c_str());
-  redisConnection.write((String("*2\r\n$3\r\nDEL\r\n$23\r\ntest::")+WiFi.macAddress()+"\r\n").c_str());
+  // Notify the web dashboard to update the values for your device
+  rediscommand_init(redisCommand);
+  rediscommand_add(redisCommand,"PUBLISH");
+  rediscommand_add(redisCommand,"refreshvalues");
+  rediscommand_add(redisCommand,WiFi.macAddress().c_str());
+  szRESP=rediscommand_tochar(redisCommand);
+  redisConnection.print(szRESP);
+  free(szRESP);
   // Expect a reply and busy (bad) wait for it
   while(redisConnection.available()==0);
   // Output to the console all the received bytes as chars
   while(redisConnection.available()!=0)
-    Serial.print((char)redisConnection.read());
-
-  // Send hardcoded SET in RESP
-  Serial.println((String("SET test::")+WiFi.macAddress()+" 1").c_str());
-  redisConnection.write((String("*3\r\n$3\r\nSET\r\n$23\r\ntest::")+WiFi.macAddress()+"\r\n$1\r\n1\r\n").c_str());
-  // Expect a reply and busy (bad) wait for it
-  while(redisConnection.available()==0);
-  // Output to the console all the received bytes as chars
-  while(redisConnection.available()!=0)
-    Serial.print((char)redisConnection.read());
-
-  // Send hardcoded TYPE in RESP
-  Serial.println((String("TYPE test::")+WiFi.macAddress()).c_str());
-  redisConnection.write((String("*2\r\n$4\r\nTYPE\r\n$23\r\ntest::")+WiFi.macAddress()+"\r\n").c_str());
-  // Expect a reply and busy (bad) wait for it
-  while(redisConnection.available()==0);
-  // Output to the console all the received bytes as chars
-  while(redisConnection.available()!=0)
-    Serial.print((char)redisConnection.read());
-
-  // Send hardcoded INCR in RESP
-  Serial.println((String("INCR test::")+WiFi.macAddress()).c_str());
-  redisConnection.write((String("*2\r\n$4\r\nINCR\r\n$23\r\ntest::")+WiFi.macAddress()+"\r\n").c_str());
-  // Expect a reply and busy (bad) wait for it
-  while(redisConnection.available()==0);
-  // Output to the console all the received bytes as chars
-  while(redisConnection.available()!=0)
-    Serial.print((char)redisConnection.read());
-
-  // Send hardcoded GET in RESP
-  Serial.println((String("GET test::")+WiFi.macAddress()).c_str());
-  redisConnection.write((String("*2\r\n$3\r\nGET\r\n$23\r\ntest::")+WiFi.macAddress()+"\r\n").c_str());
-  // Expect a reply and busy (bad) wait for it
-  while(redisConnection.available()==0);
-  // Output to the console all the received bytes as chars
-  while(redisConnection.available()!=0)
-    Serial.print((char)redisConnection.read());
-
-  if ((millis() - lastSensorRead)>5000) {
-    PROF_START(SensorRead);
-    Serial.print("Sensor value (0-1024) : ");
-    Serial.println(analogRead(0));
-    PROF_STOP(SensorRead);
-    lastSensorRead = millis();
-  }
+    redisConnection.read();
 }
