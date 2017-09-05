@@ -107,6 +107,8 @@
 
 WiFiClient redisConnection;
 IPAddress redisIP;
+unsigned long lastSensorRead=0;
+
 
 /********/
 /* Main */
@@ -144,8 +146,6 @@ void setup() {
   }
 }
 
-unsigned long lastSensorRead=0;
-
 void loop() {
   STATS_LOOP
 
@@ -174,6 +174,51 @@ void loop() {
   while(redisConnection.available()!=0)
     Serial.print((char)redisConnection.read());
 
+  // Send hardcoded DEL in RESP
+  Serial.println((String("DEL test::")+WiFi.macAddress()).c_str());
+  redisConnection.write((String("*2\r\n$3\r\nDEL\r\n$23\r\ntest::")+WiFi.macAddress()+"\r\n").c_str());
+  // Expect a reply and busy (bad) wait for it
+  while(redisConnection.available()==0);
+  // Output to the console all the received bytes as chars
+  while(redisConnection.available()!=0)
+    Serial.print((char)redisConnection.read());
+
+  // Send hardcoded SET in RESP
+  Serial.println((String("SET test::")+WiFi.macAddress()+" 1").c_str());
+  redisConnection.write((String("*3\r\n$3\r\nSET\r\n$23\r\ntest::")+WiFi.macAddress()+"\r\n$1\r\n1\r\n").c_str());
+  // Expect a reply and busy (bad) wait for it
+  while(redisConnection.available()==0);
+  // Output to the console all the received bytes as chars
+  while(redisConnection.available()!=0)
+    Serial.print((char)redisConnection.read());
+
+  // Send hardcoded TYPE in RESP
+  Serial.println((String("TYPE test::")+WiFi.macAddress()).c_str());
+  redisConnection.write((String("*2\r\n$4\r\nTYPE\r\n$23\r\ntest::")+WiFi.macAddress()+"\r\n").c_str());
+  // Expect a reply and busy (bad) wait for it
+  while(redisConnection.available()==0);
+  // Output to the console all the received bytes as chars
+  while(redisConnection.available()!=0)
+    Serial.print((char)redisConnection.read());
+
+  // Send hardcoded INCR in RESP
+  Serial.println((String("INCR test::")+WiFi.macAddress()).c_str());
+  redisConnection.write((String("*2\r\n$4\r\nINCR\r\n$23\r\ntest::")+WiFi.macAddress()+"\r\n").c_str());
+  // Expect a reply and busy (bad) wait for it
+  while(redisConnection.available()==0);
+  // Output to the console all the received bytes as chars
+  while(redisConnection.available()!=0)
+    Serial.print((char)redisConnection.read());
+
+  // Send hardcoded GET in RESP
+  Serial.println((String("GET test::")+WiFi.macAddress()).c_str());
+  redisConnection.write((String("*2\r\n$3\r\nGET\r\n$23\r\ntest::")+WiFi.macAddress()+"\r\n").c_str());
+  // Expect a reply and busy (bad) wait for it
+  while(redisConnection.available()==0);
+  // Output to the console all the received bytes as chars
+  while(redisConnection.available()!=0)
+    Serial.print((char)redisConnection.read());
+
   if ((millis() - lastSensorRead)>5000) {
     PROF_START(SensorRead);
     Serial.print("Sensor value (0-1024) : ");
@@ -181,5 +226,4 @@ void loop() {
     PROF_STOP(SensorRead);
     lastSensorRead = millis();
   }
-
 }
