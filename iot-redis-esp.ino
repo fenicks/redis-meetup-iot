@@ -96,10 +96,17 @@
 
 //  your network SSID (name)
 #define WIFI_SSID "_FrancoisPro"
-#define WIFI_PASS ""
+#define WIFI_PASS "Francois"
+
+//  Redis endpoint
+#define REDISHOST "192.168.43.161"
+#define REDISPORT 6379
 
 #include <ESP8266WiFi.h>
 #include "tools.h"
+
+WiFiClient redisConnection;
+IPAddress redisIP;
 
 /********/
 /* Main */
@@ -142,6 +149,31 @@ unsigned long lastSensorRead=0;
 void loop() {
   STATS_LOOP
 
+  if (!redisConnection.connected()) {
+    DEBUG_PRINT("Opening connection to ");
+    DEBUG_PRINT(REDISHOST);
+    DEBUG_PRINT("(");
+  
+    WiFi.hostByName(REDISHOST, redisIP);
+    DEBUG_PRINT(redisIP);
+    DEBUG_PRINT("):");
+    DEBUG_PRINT(REDISPORT);
+    DEBUG_PRINT("...");
+    if (!redisConnection.connect(redisIP, REDISPORT)) {
+      DEBUG_PRINTLN(" Failed");
+    } else {
+      DEBUG_PRINTLN(" Succeed");
+    }
+  }
+
+  // Send hardcoded PING in RESP
+  redisConnection.write("*1\r\n$4\r\nPING\r\n");
+  // Expect a reply and busy (bad) wait for it
+  while(redisConnection.available()==0);
+  // Output to the console all the received bytes as chars
+  while(redisConnection.available()!=0)
+    Serial.print((char)redisConnection.read());
+
   if ((millis() - lastSensorRead)>5000) {
     PROF_START(SensorRead);
     Serial.print("Sensor value (0-1024) : ");
@@ -149,4 +181,5 @@ void loop() {
     PROF_STOP(SensorRead);
     lastSensorRead = millis();
   }
+
 }
