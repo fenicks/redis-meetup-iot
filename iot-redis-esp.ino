@@ -95,12 +95,12 @@
 #define STATS_PERIOD 1000
 
 //  your network SSID (name)
-#define WIFI_SSID "_FrancoisPro"
-#define WIFI_PASS "Francois"
+#define WIFI_SSID "RedisLabsGuest"
+#define WIFI_PASS ""
 
 //  Redis endpoint
-#define REDISHOST "192.168.43.161"
-#define REDISPORT 6379
+#define REDISHOST "redis-14658.demo.francois.demo-rlec.redislabs.com"
+#define REDISPORT 14658
 
 #include <ESP8266WiFi.h>
 #include "RedisCommand.h"
